@@ -41,6 +41,8 @@ class Definition(BaseModel):
     model_config = ConfigDict(extra="forbid")
     brep_file: str
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    usd_brep_file: str | None = None
+    usd_brep_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
 class Part(BaseModel):
@@ -252,6 +254,9 @@ def _load(manifest_path: Path, stage_path: Path | None, asset_root: str):
         if shape.IsNull() or not BRepCheck_Analyzer(shape).IsValid():
             raise ValueError(f"BRep 无效：{identifier}")
         shapes[identifier] = shape
+        if definition.usd_brep_file:
+            if _digest(_asset_path(directory, definition.usd_brep_file)) != definition.usd_brep_sha256:
+                raise ValueError(f"USD BRep 的 SHA-256 已改变：{identifier}")
     current_stage = Path(stage_path).resolve(strict=True) if stage_path else _asset_path(directory, manifest.stage_file)
     stage = Usd.Stage.Open(str(current_stage))
     paths = [part.prim_path for part in manifest.parts]
@@ -269,6 +274,19 @@ def _load(manifest_path: Path, stage_path: Path | None, asset_root: str):
             attribute = current.GetAttribute(name)
             if attribute.GetNumTimeSamples() or attribute.Get() != original.GetAttribute(name).Get():
                 raise ValueError(f"USD Mesh 的 {name} 已改变，需要重新建立几何映射：{part.prim_path}")
+        if manifest.definitions[part.definition_id].usd_brep_file:
+            original = original_meshes.GetPrimAtPath(f"/{part.definition_id}/BRep")
+            current = stage.GetPrimAtPath(part.prim_path + "/BRep")
+            if not current or current.GetTypeName() != "BrepArray":
+                raise ValueError(f"USD 场景中缺少映射的 BrepArray：{part.prim_path}")
+            original_names = {attribute.GetName() for attribute in original.GetAuthoredAttributes()}
+            current_names = {attribute.GetName() for attribute in current.GetAuthoredAttributes()}
+            if current_names - {"purpose", "visibility"} != original_names - {"purpose", "visibility"}:
+                raise ValueError(f"USD BRep 属性发生变化：{part.prim_path}")
+            for name in original_names - {"purpose", "visibility"}:
+                attribute = current.GetAttribute(name)
+                if attribute.GetNumTimeSamples() or attribute.Get() != original.GetAttribute(name).Get():
+                    raise ValueError(f"USD BRep 的 {name} 已改变：{part.prim_path}")
     return manifest, stage, shapes
 
 
@@ -359,8 +377,11 @@ def check_interference(
             "point_b_m": _coordinates(distance.PointOnShape2(1)),
         })
     known_meshes = {part.prim_path + "/Geometry" for part in data.parts}
+    known_geometry = known_meshes | {part.prim_path + "/BRep" for part in data.parts
+                                     if data.definitions[part.definition_id].usd_brep_file}
     unmapped = sorted(str(prim.GetPath()) for prim in Usd.PrimRange.Stage(stage, Usd.TraverseInstanceProxies())
-                      if prim.IsA(UsdGeom.Gprim) and str(prim.GetPath()) not in known_meshes)
+                      if (prim.IsA(UsdGeom.Gprim) or prim.GetTypeName() == "BrepArray")
+                      and str(prim.GetPath()) not in known_geometry)
     unmapped_meshes = [path for path in unmapped if stage.GetPrimAtPath(path).IsA(UsdGeom.Mesh)]
     return {
         "kind": "static_brep_interference", "engine": f"cadquery-ocp {version('cadquery-ocp')}",

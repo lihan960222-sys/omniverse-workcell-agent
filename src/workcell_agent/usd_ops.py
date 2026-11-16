@@ -2,7 +2,7 @@ import math
 from pathlib import Path
 from uuid import uuid4
 
-from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, UsdPhysics
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, UsdPhysics, Vt
 
 from .models import MaterialSpec, PhysicsSpec, JointSpec
 
@@ -17,10 +17,62 @@ def require_prim(stage, path):
     return prim
 
 
+def prepare_texture_uvs(prim, projection):
+    if prim.IsInstance():
+        prim.SetInstanceable(False)
+    meshes = []
+    for child in prim.GetChildren():
+        meshes.extend(prepare_texture_uvs(child, projection))
+    if not prim.IsA(UsdGeom.Mesh):
+        return meshes
+    mesh = UsdGeom.Mesh(prim)
+    points = mesh.GetPointsAttr().Get()
+    counts = mesh.GetFaceVertexCountsAttr().Get()
+    indices = mesh.GetFaceVertexIndicesAttr().Get()
+    valid, reason = UsdGeom.Mesh.ValidateTopology(indices, counts, len(points))
+    if not valid or not counts or any(count < 3 for count in counts):
+        raise ValueError(f"UV 需要有效 Mesh 拓扑：{prim.GetPath()} {reason}")
+    uv = UsdGeom.PrimvarsAPI(mesh).GetPrimvar("st")
+    if projection == "existing":
+        values = uv.ComputeFlattened() if uv else None
+        expected = {"constant": 1, "uniform": len(counts), "vertex": len(points),
+                    "varying": len(points), "faceVarying": len(indices)}
+        if (not uv or not values or len(values) != expected.get(uv.GetInterpolation())
+                or any(len(value) != 2 or not all(math.isfinite(component) for component in value) for value in values)):
+            raise ValueError(f"缺少有效 st UV 坐标：{prim.GetPath()}")
+    else:
+        low = [min(point[axis] for point in points) for axis in range(3)]
+        size = [max(point[axis] for point in points) - low[axis] for axis in range(3)]
+        values, offset = [], 0
+        for count in counts:
+            face = [points[index] for index in indices[offset:offset + count]]
+            normal = Gf.Vec3f(0)
+            for first, second in zip(face, face[1:] + face[:1]):
+                normal += Gf.Cross(first, second)
+            if normal.GetLength() < 1e-15:
+                raise ValueError(f"UV 投影遇到退化面：{prim.GetPath()}")
+            omitted = max(range(3), key=lambda axis: abs(normal[axis]))
+            axes = [axis for axis in range(3) if axis != omitted]
+            if any(size[axis] <= 0 for axis in axes):
+                raise ValueError(f"UV 投影范围无效：{prim.GetPath()}")
+            values.extend(Gf.Vec2f(*((point[axis] - low[axis]) / size[axis] for axis in axes)) for point in face)
+            offset += count
+        uv = UsdGeom.PrimvarsAPI(mesh).CreatePrimvar("st", Sdf.ValueTypeNames.TexCoord2fArray, "faceVarying")
+        uv.BlockIndices()
+        uv.Set(Vt.Vec2fArray(values))
+    return meshes + [str(prim.GetPath())]
+
+
 def set_material(stage: Usd.Stage, spec: MaterialSpec):
     prims = [require_prim(stage, path) for path in spec.prim_paths]
     if spec.texture and not Path(spec.texture).is_file():
         raise ValueError(f"纹理文件不存在: {spec.texture}")
+    textured_meshes = []
+    if spec.texture:
+        for prim in prims:
+            textured_meshes.extend(prepare_texture_uvs(prim, spec.uv_projection))
+        if not textured_meshes:
+            raise ValueError("贴图需要包含 Mesh 的对象")
     path = "/WorkcellMaterials/m_" + uuid4().hex
     material = UsdShade.Material.Define(stage, path)
     shader = UsdShade.Shader.Define(stage, path + "/Shader")
@@ -33,6 +85,7 @@ def set_material(stage: Usd.Stage, spec: MaterialSpec):
         texture = UsdShade.Shader.Define(stage, path + "/Texture")
         texture.CreateIdAttr("UsdUVTexture")
         texture.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(Sdf.AssetPath(Path(spec.texture).resolve().as_posix()))
+        texture.CreateInput("sourceColorSpace", Sdf.ValueTypeNames.Token).Set("sRGB")
         reader = UsdShade.Shader.Define(stage, path + "/UV")
         reader.CreateIdAttr("UsdPrimvarReader_float2")
         reader.CreateInput("varname", Sdf.ValueTypeNames.Token).Set("st")
@@ -40,8 +93,8 @@ def set_material(stage: Usd.Stage, spec: MaterialSpec):
         color.ConnectToSource(texture.ConnectableAPI(), "rgb")
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
     for prim in prims:
-        UsdShade.MaterialBindingAPI.Apply(prim).Bind(material)
-    return {"modified": spec.prim_paths, "material": path}
+        UsdShade.MaterialBindingAPI.Apply(prim).Bind(material, bindingStrength=UsdShade.Tokens.strongerThanDescendants)
+    return {"modified": spec.prim_paths, "material": path, "textured_meshes": textured_meshes}
 
 
 def set_physics(stage: Usd.Stage, spec: PhysicsSpec):
@@ -75,7 +128,7 @@ def set_physics(stage: Usd.Stage, spec: PhysicsSpec):
     physics.CreateRestitutionAttr(spec.restitution)
     colliders = []
     for child in Usd.PrimRange(prim):
-        if child.IsA(UsdGeom.Gprim):
+        if child.IsA(UsdGeom.Gprim) and child.GetTypeName() != "BrepArray":
             UsdPhysics.CollisionAPI.Apply(child).CreateCollisionEnabledAttr(True)
             if child.IsA(UsdGeom.Mesh):
                 UsdPhysics.MeshCollisionAPI.Apply(child).CreateApproximationAttr(spec.collision)

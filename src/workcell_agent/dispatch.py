@@ -2,13 +2,14 @@ import asyncio
 import json
 import os
 import shutil
+import signal
 from pathlib import Path
 from uuid import uuid4
 
 from pxr import Usd, UsdGeom, Sdf, Gf
 
 from .environment import check_environment
-from .models import MaterialSpec, PhysicsSpec, JointSpec, OperationRequest
+from .models import MaterialSpec, PhysicsSpec, JointSpec, OperationRequest, StepImportSpec
 from .reports import write_report
 from .usd_ops import set_material, set_physics, create_joint
 
@@ -25,7 +26,8 @@ class Dispatcher:
         folder = self.session.directory / "jobs" / uuid4().hex
         folder.mkdir(parents=True)
         revision = self.session.revision
-        if operation != "convert_step":
+        geometry_check = operation in {"check_interference", "query_features"}
+        if geometry_check:
             if self.host and (self.host.motion_running or self.host.timeline.is_playing()):
                 raise ValueError("静态几何检查需要停止并复位运动")
             snapshot = folder / "scene.usda"
@@ -40,19 +42,24 @@ class Dispatcher:
         environment["LD_LIBRARY_PATH"] = environment.pop("WORKCELL_ORIGINAL_LD_LIBRARY_PATH", "")
         process = await asyncio.create_subprocess_exec(
             python, "-I", "-m", "workcell_agent.worker", operation, str(input_path), str(output_path),
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, env=environment)
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, env=environment,
+            start_new_session=os.name != "nt")
         try:
             stdout, stderr = await process.communicate()
         except asyncio.CancelledError:
             if process.returncode is None:
-                process.terminate()
+                if os.name == "nt":
+                    process.terminate()
+                else:
+                    os.killpg(process.pid, signal.SIGTERM)
                 await process.wait()
             raise
         (folder / "stderr.log").write_bytes(stderr)
+        (folder / "stdout.log").write_bytes(stdout)
         if process.returncode:
             raise RuntimeError(f"几何任务失败，退出码 {process.returncode}: {stderr.decode(errors='replace')[-4000:]}")
         result = json.loads(output_path.read_text(encoding="utf-8"))
-        if operation != "convert_step":
+        if geometry_check:
             result["scene_revision"] = revision
             result["current_scene_revision"] = self.session.revision
             result["scene_changed_during_check"] = revision != self.session.revision
@@ -68,6 +75,25 @@ class Dispatcher:
             return check_environment()
         if operation == "inspect_scene":
             return self.session.inspect()
+        if operation in {"usd_brep_status", "install_usd_brep"}:
+            if parameters:
+                raise ValueError("USD BRep 安装与状态操作不接受参数")
+            result = await self._geometry_job(operation, {})
+            result["schema_registered"] = bool(Usd.SchemaRegistry().GetTypeFromSchemaTypeName("BrepArray"))
+            result["restart_required"] = not result["schema_registered"]
+            return result
+        if operation == "import_step":
+            spec = StepImportSpec.model_validate(parameters)
+            if self.host and (self.host.motion_running or self.host.timeline.is_playing()):
+                raise ValueError("导入 STEP 需要停止并复位运动")
+            if not Usd.SchemaRegistry().GetTypeFromSchemaTypeName("BrepArray"):
+                raise RuntimeError("请通过项目启动脚本重新启动 Omniverse，以注册 omniSolid schema")
+            converted = await self.execute(OperationRequest(operation="convert_step_brep", parameters={"source": spec.source}))
+            imported = await self.execute(OperationRequest(operation="import_asset", scene_revision=request.scene_revision,
+                                                           parameters={"path": converted["usd_path"], "prim_path": spec.prim_path}))
+            for part in converted["parts"]:
+                part["prim_path"] = str(Sdf.Path(part["prim_path"]).ReplacePrefix(Sdf.Path("/World"), Sdf.Path(spec.prim_path)))
+            return {**converted, **imported, "asset_root": spec.prim_path}
         if operation == "save_project":
             if self.host and self.host.motion_running:
                 raise ValueError("保存工程需要停止并复位运动")
@@ -115,9 +141,9 @@ class Dispatcher:
                 return {"prim_path": path}
             result = self.session.edit(request.scene_revision, author)
             return {**result, "scene_revision": self.session.revision}
-        if operation in {"convert_step", "check_interference", "query_features"}:
+        if operation in {"convert_step", "convert_step_brep", "check_interference", "query_features"}:
             parameters = dict(parameters)
-            if operation == "convert_step":
+            if operation in {"convert_step", "convert_step_brep"}:
                 source = Path(parameters["source"]).resolve(strict=True)
                 parameters = {"source": str(source), "output_directory": str(
                     self.session.directory / "assets" / uuid4().hex)}

@@ -22,6 +22,7 @@ class MaterialSpec(StrictModel):
     roughness: Unit = 0.5
     opacity: Unit = 1
     texture: str | None = None
+    uv_projection: Literal["box", "existing"] = "box"
 
 
 class PhysicsSpec(StrictModel):
@@ -67,12 +68,19 @@ class JointSpec(StrictModel):
 
 Operation = Literal[
     "environment", "inspect_scene", "get_selection", "save_project", "convert_step",
+    "usd_brep_status", "install_usd_brep", "convert_step_brep", "import_step",
     "import_asset", "set_material", "set_physics", "create_joint", "validate_asset",
     "query_features", "check_interference", "start_motion", "pause_motion",
     "resume_motion", "stop_motion", "reset_motion", "motion_status", "check_motion", "validation_rules",
 ]
 READ_OPERATIONS = {"environment", "inspect_scene", "get_selection", "motion_status",
-                   "validate_asset", "validation_rules", "query_features", "check_interference", "convert_step"}
+                   "validate_asset", "validation_rules", "query_features", "check_interference", "convert_step",
+                   "usd_brep_status", "install_usd_brep", "convert_step_brep"}
+
+
+class StepImportSpec(StrictModel):
+    source: str = Field(min_length=1)
+    prim_path: str = "/World/Imported"
 
 
 class OperationRequest(StrictModel):

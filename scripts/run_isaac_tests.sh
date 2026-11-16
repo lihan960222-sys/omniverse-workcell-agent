@@ -14,6 +14,8 @@ mkdir -p "$repo/.work/temp" "$repo/.work/pip-cache" "$repo/.work/kit-test-deps"
 export TMPDIR="$repo/.work/temp"
 export PIP_CACHE_DIR="$repo/.work/pip-cache"
 export PYTHONNOUSERSITE=1
+export PXR_PLUGINPATH_NAME="$repo/src/workcell_agent/resources/omniSolid${PXR_PLUGINPATH_NAME:+:$PXR_PLUGINPATH_NAME}"
+export WORKCELL_BREP_ROOT="${WORKCELL_BREP_ROOT:-$repo/.work/usd-brep-sdk}"
 export PYTHONPATH="$repo/src:$repo/.work/kit-deps:$repo/.work/kit-test-deps"
 export WORKCELL_WORKER_PYTHON="$repo/.venv/bin/python"
 export WORKCELL_URL='http://127.0.0.1:8765'

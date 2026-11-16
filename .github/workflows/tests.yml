@@ -29,7 +29,7 @@ jobs:
           python -m ruff check src tests scripts extensions
           for script in scripts/*.sh; do bash -n "$script"; done
       - name: Run OpenUSD and OCP tests
-        run: python -m pytest tests --ignore=tests/isaac --junitxml=.work/core-tests.xml
+        run: python -m pytest tests --ignore=tests/isaac --ignore=tests/test_brep_integration.py --junitxml=.work/core-tests.xml
         env:
           TMPDIR: ${{ github.workspace }}/.work/temp
       - uses: actions/upload-artifact@v4
@@ -37,4 +37,40 @@ jobs:
         with:
           name: core-test-results
           path: .work/core-tests.xml
+          if-no-files-found: ignore
+  usd-brep:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      WORKCELL_BREP_ROOT: ${{ github.workspace }}/.work/usd-brep-sdk
+      WORKCELL_WORKER_PYTHON: ${{ github.workspace }}/.venv/bin/python
+      TMPDIR: ${{ github.workspace }}/.work/temp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: mkdir -p .work/temp
+      - name: Install project
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -c requirements.lock -e '.[usd,geometry,test]'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .work/packman
+            .work/usd-brep-sdk
+          key: usd-brep-linux-3fd5b9548d19aa8c12c29bc9637a96d42a06f8a5-v1
+      - name: Build NVIDIA USD BRep and verify conversion
+        run: bash scripts/install_usd_brep.sh
+      - name: Test STEP import, BRep, texture and interference
+        run: .venv/bin/python -m pytest tests/test_brep_integration.py --junitxml=.work/brep-tests.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: usd-brep-test-results
+          path: |
+            .work/brep-tests.xml
+            .work/usd-brep-sdk/workcell-installation.json
+            .work/usd-brep-sdk/.work/workcell-probe/
           if-no-files-found: ignore

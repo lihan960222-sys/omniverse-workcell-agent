@@ -93,9 +93,11 @@ async def test_texture_copied_and_saved_with_relative_reference(tmp_path):
     texture = tmp_path / "纹理 image.ppm"
     texture.write_bytes(b"P6\n1 1\n255\n\xff\x00\x00")
     session = SceneSession(make_stage(tmp_path / "source.usda"), tmp_path / "project")
+    from test_materials import make_mesh
+    make_mesh(session.stage)
     result = await Dispatcher(session).execute(OperationRequest(
         operation="set_material", scene_revision=session.revision,
-        parameters={"prim_paths": ["/World/A"], "texture": str(texture)}))
+        parameters={"prim_paths": ["/World/Part"], "texture": str(texture)}))
     texture.unlink()
     saved = session.save()
     reopened = Usd.Stage.Open(saved["path"])

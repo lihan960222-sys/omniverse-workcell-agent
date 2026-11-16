@@ -11,7 +11,8 @@ server = FastMCP("omniverse-workcell-agent", instructions=(
     "submit_operation 返回任务标识，必须用 get_job 查询实际结果。"
     "只有 succeeded 表示该任务成功；未执行的检查不能报告通过。"
     "start_motion/check_motion 的任务成功表示启动完成；必须继续查询 motion_status 中同一 run_id 的实际状态。"
-    "convert_step 的 source 为 Linux 本地 STP 路径。"))
+    "STEP 工作流：usd_brep_status、必要时 install_usd_brep，再 import_step，随后 set_material。"
+    "安装任务可能需要构建官方转换器，必须查询完成状态。source 为 Linux 本地 STP 路径。"))
 
 
 async def call_bridge(method, path, payload=None):
@@ -58,14 +59,17 @@ async def cancel_job(job_id: str) -> dict:
 
 @server.tool(description="获取七项功能的参数定义，配置操作前读取。")
 def operation_schema(operation: str) -> dict:
-    from .models import MaterialSpec, PhysicsSpec, JointSpec
+    from .models import MaterialSpec, PhysicsSpec, JointSpec, StepImportSpec
     from .motion import MotionPlan
     models = {"set_material": MaterialSpec, "set_physics": PhysicsSpec,
-              "create_joint": JointSpec, "start_motion": MotionPlan, "check_motion": MotionPlan}
+              "create_joint": JointSpec, "start_motion": MotionPlan, "check_motion": MotionPlan,
+              "import_step": StepImportSpec}
     if operation in models:
         return models[operation].model_json_schema()
     schemas = {
         "convert_step": {"source": "Linux STP absolute path"},
+        "convert_step_brep": {"source": "Linux STP absolute path"},
+        "usd_brep_status": {}, "install_usd_brep": {},
         "import_asset": {"path": "USD absolute path", "prim_path": "/World/Imported", "source_prim": "optional source Prim"},
         "query_features": {"manifest": "geometry manifest path", "prim_path": "current part prim path",
                            "asset_root": "/World/Imported"},

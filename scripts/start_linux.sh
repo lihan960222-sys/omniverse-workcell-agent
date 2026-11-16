@@ -20,6 +20,8 @@ export WORKCELL_URL='http://127.0.0.1:8765'
 export WORKCELL_PORT=8765
 export PYTHONPATH="$repo/src:$repo/.work/kit-deps"
 export PYTHONNOUSERSITE=1
+export PXR_PLUGINPATH_NAME="$repo/src/workcell_agent/resources/omniSolid${PXR_PLUGINPATH_NAME:+:$PXR_PLUGINPATH_NAME}"
+export WORKCELL_BREP_ROOT="${WORKCELL_BREP_ROOT:-$repo/.work/usd-brep-sdk}"
 export TMPDIR="$repo/.work/temp"
 export WORKCELL_ORIGINAL_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
 
