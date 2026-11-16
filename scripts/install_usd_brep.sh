@@ -32,5 +32,5 @@ fi
 }
 cd -- "$WORKCELL_BREP_ROOT"
 bash prebuild.sh
-bash repo.sh build --release -j 2
+bash repo.sh build --release --target occt_to_usd -j 2
 "$python" -m workcell_agent.brep verify-installation

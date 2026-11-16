@@ -22,7 +22,9 @@ Kit 通过安装包自带的 USD 运行。安装脚本将外部几何依赖保�
 ```bash
 export ISAAC_SIM_PATH=/absolute/path/to/isaac-sim
 bash scripts/install_linux.sh
-.venv/bin/python -m pytest tests --ignore=tests/isaac --junitxml=.work/core-tests.xml
+.venv/bin/python -m pytest tests --ignore=tests/isaac --ignore=tests/test_brep_integration.py --junitxml=.work/core-tests.xml
+bash scripts/install_usd_brep.sh
+.venv/bin/python -m pytest tests/test_brep_integration.py
 bash scripts/run_isaac_tests.sh
 ```
 
@@ -38,12 +40,13 @@ bash scripts/run_isaac_tests.sh
 | 运动状态 | 重复启动被拒绝，已有运动保持，暂停与继续有效 |
 | 初始化取消 | 终止、复位和关闭能取消初始化，状态保持一致 |
 | 报告保留 | 运动完成后的终止与复位保留已经生成的报告内容 |
+| 展示视频 | 实际录制 MP4，ffprobe 解码确认 320×240、12 帧、1 秒，相机与灯光完成清理 |
 
-运行器完成七个独立 IsaacHost 测试后，启用 workcell.agent 执行 Extension 连接测试，每个阶段独立持有场景会话。
+运行器完成八个独立 IsaacHost 测试后，启用 workcell.agent 执行 Extension 连接测试，每个阶段独立持有场景会话。录制检查需要安装 FFmpeg。
 
-默认测试执行超时 900 秒，可用 `--timeout 1200` 调整；应用启动时间另外计算。失败会终止后续测试，并保留场景和报告。结果目录 `.work/isaac-tests/<run-id>` 中 `result.json` 必须同时满足 `status: completed`、`passed: true`、`tests_run: 8`。停留在 `starting` 表示执行没有正常完成。
+默认测试执行超时 900 秒，可用 `--timeout 1200` 调整；应用启动时间另外计算。失败会终止后续测试，并保留场景和报告。结果目录 `.work/isaac-tests/<run-id>` 中 `result.json` 必须同时满足 `status: completed`、`passed: true`、`tests_run: 9`。停留在 `starting` 表示执行没有正常完成。
 
-GitHub Actions 运行 Linux Python 3.12 下的 OpenUSD/OCP 核心测试。GPU 与 Isaac Sim 验收由上述脚本运行，CI 结果只代表已执行的核心项目。
+GitHub Actions 运行 Linux Python 3.12 下的 OpenUSD/OCP 核心测试，并独立构建官方 USD BRep、执行真实转换测试。GPU 与 Isaac Sim 验收由上述脚本运行，CI 结果只代表已执行的项目。
 
 ## 诊断导出
 
@@ -56,8 +59,8 @@ GitHub Actions 运行 Linux Python 3.12 下的 OpenUSD/OCP 核心测试。GPU �
 按照 README 启动 Extension 并配置 Codex，使用用户自己的 STEP：
 
 1. 调用 `connection_status` 和 `environment`，检查运行版本。
-2. `convert_step` 完成后检查 `geometry_manifest`、零件数量和单位；使用实际尺寸核对一个已知零件。
-3. 导入 USD，设置材质、物理和 Joint；确认几何轴、质量、限位和动作过程。
+2. `import_step` 完成后检查 `geometry_manifest`、零件数量、BrepArray 和单位；使用实际尺寸核对一个已知零件。
+3. 设置视觉材质并录制展示视频；需要运动时另行配置物理和 Joint，确认几何轴、质量、限位和动作过程。
 4. 执行静态干涉检查，检查覆盖范围、参与零件和共同体积。
 5. 执行动作、暂停、继续、终止和复位，核对实际位置及预期接触。
 6. 打开 HTML/JSON 报告，核对零件路径、时间、单位、检查状态和未覆盖项。

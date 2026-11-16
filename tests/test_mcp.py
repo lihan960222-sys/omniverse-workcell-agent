@@ -46,6 +46,11 @@ async def test_stdio_lists_tools_and_returns_motion_schema(tmp_path):
         assert {"initial_positions", "actions"} <= set(schema_data["required"])
         definition = schema_data["$defs"]["MotionAction"]
         assert {"joint_path", "start", "target", "max_velocity", "max_acceleration"} <= set(definition["required"])
+        for operation, required in (("import_step", "source"), ("auto_material", "prim_paths"),
+                                    ("record_video", "prim_path")):
+            schema = await client.call_tool("operation_schema", {"operation": operation})
+            assert not schema.isError
+            assert required in json.loads(schema.content[0].text)["required"]
 
 
 async def test_unreachable_bridge_returns_mcp_error(tmp_path):

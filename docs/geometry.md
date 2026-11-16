@@ -2,6 +2,16 @@
 
 几何模块使用 `cadquery-ocp==7.9.3.1.1` 提供的 Open CASCADE API。Windows 和 Linux 使用相同的 STEP 导入、BRep 运算及 Mesh 生成代码。模块需要 `usd-core==25.11` 和项目声明的 Pydantic；在 Isaac Sim 外部的项目 Python 环境执行。
 
+## NVIDIA USD BRep
+
+`install_usd_brep` 构建 NVIDIA 官方源码 commit `3fd5b9548d19aa8c12c29bc9637a96d42a06f8a5`。安装成功要求官方 `occt_to_usd` 完成真实 OCP box 转换，生成 `BrepArray`，并保存转换器 SHA-256 与验证文件。
+
+`import_step` 使用 OCP 读取 STEP，再调用官方转换器把每个部件的 OCCT BRep 写入 `geometry/<id>.usdc`。装配中同时引用 BrepArray 与同源显示 Mesh。BrepArray 使用 `guide` purpose，其局部比例为 `0.001`，将毫米坐标转换为米。显示和物理碰撞使用 Mesh，静态精确检查使用同源 OCCT BRep。
+
+项目随附官方资源类型的 `omniSolid` schema。启动脚本通过 `PXR_PLUGINPATH_NAME` 在打开 USD 场景前注册。官方转换器及其 OpenUSD 动态库在独立进程执行；Kit 使用自带 USD。固定版本、许可证与来源保存在 `src/workcell_agent/resources/omniSolid/SOURCE.md`。
+
+`geometry.json` 另外记录 `usd_brep_file`、`usd_brep_sha256`。检查会验证文件内容以及当前场景中的 BrepArray 属性。直接编辑 BRep 或 Mesh 后需要重新转换。
+
 ## 文件与坐标
 
 `convert_step(source, output_directory)` 接收 `.stp` 或 `.step` 文件，要求输出目录尚未存在。读取失败、无有效部件或三角化失败时直接报告错误。发生错误后的输出目录可能包含中间文件，重新执行时使用新的输出目录。
@@ -74,7 +84,7 @@ features = query_features(manifest, "/World/实际部件路径")
 
 准确体积检查要求有效封闭实体，接受正交变换和正向均匀缩放。几何修改后需要重新转换并建立映射。此接口检查一个静态状态；运行接触检查由 Isaac Sim 模块负责。
 
-尚未在 Linux 或用户的实际 STEP 工站模型上运行本模块。STEP 文件中的轴向约定由导出方决定，本模块保持其坐标数值并标记 Z 轴向上；需要改变工站朝向时调整装配 Xform。
+GitHub Linux CI 使用真实生成的 STEP 验证本模块；用户的实际 STEP 工站模型尚未验证。STEP 文件中的轴向约定由导出方决定，本模块保持其坐标数值并标记 Z 轴向上；需要改变工站朝向时调整装配 Xform。
 
 ## 依赖依据
 

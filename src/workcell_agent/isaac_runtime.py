@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import math
+import shutil
+from pathlib import Path
 from contextlib import suppress
 from uuid import uuid4
 
@@ -11,12 +13,14 @@ import omni.timeline
 import omni.physx
 import omni.asset_validator.core as validator
 from omni.physx.bindings._physx import ContactEventType
-from pxr import UsdGeom, UsdPhysics, PhysxSchema, PhysicsSchemaTools
+from pxr import Usd, UsdGeom, UsdPhysics, PhysxSchema, PhysicsSchemaTools
 from isaacsim.core.experimental.prims import Articulation
 from isaacsim.core.simulation_manager import SimulationManager
 
 from .motion import MotionPlan, sample_motion, motion_duration, validate_motion, classify_contact
 from .reports import write_report
+from .models import VideoSpec
+from .presentation import create_presentation
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +44,8 @@ class IsaacHost:
         self._finish_task = None
         self._control_lock = asyncio.Lock()
         self._closed = False
+        self.capture_running = False
+        self._capture_task = None
 
     @property
     def motion_running(self):
@@ -60,7 +66,7 @@ class IsaacHost:
     async def start(self, parameters, checking=False):
         if self._closed:
             raise ValueError("运行服务已经关闭")
-        if self.motion_running or self._control_lock.locked():
+        if self.motion_running or self.capture_running or self._control_lock.locked():
             raise ValueError("已有运动任务运行中")
         plan = MotionPlan.model_validate(parameters)
         validate_motion(plan)
@@ -275,7 +281,92 @@ class IsaacHost:
         self.contacts = []
         self.contact_events = []
 
+    async def record_video(self, parameters):
+        from omni.kit.capture.viewport import CaptureExtension, CaptureOptions, CaptureRangeType, CaptureRenderPreset
+        from omni.kit.viewport.utility import get_active_viewport
+
+        spec = VideoSpec.model_validate(parameters)
+        if self._closed or self.capture_running or self.motion_running or self.timeline.is_playing():
+            raise ValueError("录制需要运行中的服务和停止状态的场景")
+        ffprobe = shutil.which("ffprobe")
+        if not ffprobe:
+            raise RuntimeError("视频验证需要安装 FFmpeg，当前找不到 ffprobe")
+        viewport = get_active_viewport()
+        if viewport is None:
+            raise RuntimeError("视频录制需要活动 Viewport")
+        capture = CaptureExtension.get_instance()
+        if capture is None:
+            raise RuntimeError("omni.kit.capture.viewport 没有启动")
+        directory = self.session.directory / "videos" / uuid4().hex
+        directory.mkdir(parents=True)
+        self.capture_running = True
+        self._capture_task = asyncio.current_task()
+        old_time = self.timeline.get_current_time()
+        old_camera = viewport.camera_path
+        presentation = None
+        started = False
+        try:
+            presentation = self.session.edit(self.session.revision, lambda stage: create_presentation(stage, spec))
+            viewport.camera_path = presentation["camera"]
+            capture.options = CaptureOptions(
+                camera=presentation["camera"], output_folder=str(directory), file_name="model-orbit",
+                file_type=".mp4", range_type=CaptureRangeType.FRAMES, start_frame=0,
+                end_frame=presentation["frame_count"], fps=spec.fps,
+                animation_fps=spec.fps, capture_every_nth_frames=1,
+                res_width=spec.width, res_height=spec.height, render_preset=CaptureRenderPreset.RAY_TRACE,
+                real_time_settle_latency_frames=8, preroll_frames=30, overwrite_existing_frames=False)
+            if not capture.start():
+                raise RuntimeError("Omniverse 拒绝开始视频录制，请检查 Kit 日志")
+            started = True
+            async with asyncio.timeout(600):
+                while not capture.done:
+                    await omni.kit.app.get_app().next_update_async()
+            outputs = [Path(path).resolve(strict=True) for path in capture.get_outputs(validate=True)]
+            videos = [path for path in outputs if path.suffix.lower() == ".mp4"]
+            if len(videos) != 1 or not videos[0].is_relative_to(directory) or videos[0].stat().st_size == 0:
+                raise RuntimeError("录制没有生成当前任务的有效 MP4 文件")
+            process = await asyncio.create_subprocess_exec(
+                ffprobe, "-v", "error", "-count_frames", "-select_streams", "v:0",
+                "-show_entries", "stream=width,height,nb_read_frames,duration", "-of", "json", str(videos[0]),
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            try:
+                async with asyncio.timeout(120):
+                    stdout, stderr = await process.communicate()
+            finally:
+                if process.returncode is None:
+                    process.terminate()
+                    await process.wait()
+            if process.returncode or stderr:
+                raise RuntimeError(f"MP4 解码检查失败：{stderr.decode(errors='replace')}")
+            streams = json.loads(stdout)["streams"]
+            if len(streams) != 1:
+                raise RuntimeError("MP4 缺少视频流")
+            stream = streams[0]
+            if (stream["width"], stream["height"], int(stream["nb_read_frames"])) != (
+                    spec.width, spec.height, presentation["frame_count"]):
+                raise RuntimeError(f"MP4 尺寸或帧数不符合录制参数：{stream}")
+            if not math.isclose(float(stream["duration"]), presentation["duration_s"], abs_tol=1 / spec.fps):
+                raise RuntimeError(f"MP4 时长不符合录制参数：{stream}")
+            result = {**presentation, "video": str(videos[0]), "decoded": stream}
+            (directory / "recording.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+        finally:
+            if started:
+                capture.cancel()
+                self.timeline.stop()
+                self.timeline.set_current_time(old_time)
+            viewport.camera_path = old_camera
+            if presentation:
+                with Usd.EditContext(self.session.stage, self.session.layer):
+                    self.session.stage.RemovePrim(presentation["presentation_root"])
+            self.capture_running = False
+            self._capture_task = None
+        return {**result, "scene_revision": self.session.revision}
+
     async def execute(self, operation, parameters):
+        if operation == "record_video":
+            return await self.record_video(parameters)
+        if self.capture_running:
+            raise ValueError("视频录制期间请等待任务完成")
         if operation == "get_selection":
             return {"paths": omni.usd.get_context().get_selection().get_selected_prim_paths()}
         if operation == "validation_rules":
@@ -335,6 +426,11 @@ class IsaacHost:
 
     async def close(self):
         self._closed = True
+        if self._capture_task is not None:
+            task = self._capture_task
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
         async with self._control_lock:
             await self._stop_active()
             self._clear_motion()

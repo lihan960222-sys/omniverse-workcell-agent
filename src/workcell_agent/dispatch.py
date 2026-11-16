@@ -9,7 +9,8 @@ from uuid import uuid4
 from pxr import Usd, UsdGeom, Sdf, Gf
 
 from .environment import check_environment
-from .models import MaterialSpec, PhysicsSpec, JointSpec, OperationRequest, StepImportSpec
+from .models import MaterialSpec, PhysicsSpec, JointSpec, OperationRequest, StepImportSpec, AutoMaterialSpec
+from .presentation import auto_material
 from .reports import write_report
 from .usd_ops import set_material, set_physics, create_joint
 
@@ -69,6 +70,8 @@ class Dispatcher:
 
     async def execute(self, request: OperationRequest):
         operation, parameters = request.operation, request.parameters
+        if self.host and self.host.capture_running and operation not in {"environment", "inspect_scene", "get_selection"}:
+            raise ValueError("视频录制期间请等待任务完成")
         if request.scene_revision:
             self.session.require_revision(request.scene_revision)
         if operation == "environment":
@@ -98,6 +101,12 @@ class Dispatcher:
             if self.host and self.host.motion_running:
                 raise ValueError("保存工程需要停止并复位运动")
             return self.session.save()
+        if operation == "auto_material":
+            if self.host and (self.host.motion_running or self.host.timeline.is_playing()):
+                raise ValueError("自动贴图需要停止并复位运动")
+            spec = AutoMaterialSpec.model_validate(parameters)
+            result = self.session.edit(request.scene_revision, lambda stage: auto_material(stage, spec))
+            return {**result, "scene_revision": self.session.revision}
         methods = {"set_material": (MaterialSpec, set_material),
                    "set_physics": (PhysicsSpec, set_physics), "create_joint": (JointSpec, create_joint)}
         if operation in methods:

@@ -20,8 +20,10 @@ from workcell_agent.scene import SceneSession
 
 
 PAGES = {
-    "资产": (("读取场景", "inspect_scene"), ("转换 STEP", "convert_step"),
-             ("导入 USD", "import_asset"), ("材质设置", "set_material")),
+    "资产": (("读取场景", "inspect_scene"), ("USD BRep 状态", "usd_brep_status"),
+             ("安装 USD BRep", "install_usd_brep"), ("导入 STEP", "import_step"),
+             ("导入 USD", "import_asset"), ("视觉材质", "auto_material"),
+             ("材质设置", "set_material"), ("录制视频", "record_video")),
     "物理": (("物理参数", "set_physics"), ("环境检查", "environment")),
     "机构": (("创建关节", "create_joint"), ("几何特征", "query_features")),
     "运动": (("开始运动", "start_motion"), ("暂停", "pause_motion"),
@@ -33,6 +35,10 @@ PAGES = {
 
 PARAMETERS = {
     "convert_step": {"source": ""},
+    "import_step": {"source": "", "prim_path": "/World/Imported"},
+    "auto_material": {"prim_paths": ["/World/Imported"], "color": [0.55, 0.57, 0.60],
+                      "metallic": 0.8, "roughness": 0.3, "opacity": 1},
+    "record_video": {"prim_path": "/World/Imported", "duration_s": 10, "width": 1920, "height": 1080, "fps": 30},
     "import_asset": {"path": "", "prim_path": "/World/Imported"},
     "set_material": {"prim_paths": [], "color": [0.5, 0.5, 0.5], "roughness": 0.5},
     "set_physics": {"prim_path": "", "mass_kg": 1.0, "collision": "convexHull"},

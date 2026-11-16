@@ -14,6 +14,25 @@ from workcell_agent.example import create_example
 
 
 @pytest.mark.asyncio
+async def test_record_video(tmp_path):
+    host, session = await lifecycle_host(tmp_path)
+    from omni.kit.viewport.utility import get_active_viewport
+    original_camera = get_active_viewport().camera_path
+    try:
+        result = await host.execute("record_video", {"prim_path": "/World/Mechanism", "duration_s": 1,
+                                                     "fps": 12, "width": 320, "height": 240})
+        assert Path(result["video"]).stat().st_size > 0
+        assert int(result["decoded"]["nb_read_frames"]) == 12
+        assert not host.capture_running
+        assert not host.timeline.is_playing()
+        assert not session.stage.GetPrimAtPath(result["presentation_root"])
+        assert get_active_viewport().camera_path == original_camera
+    finally:
+        await host.close()
+        session.close()
+
+
+@pytest.mark.asyncio
 async def test_real_joint_motion_and_stop(tmp_path):
     path = create_example(tmp_path / "sample.usda")
     context = omni.usd.get_context()

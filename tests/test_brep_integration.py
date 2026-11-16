@@ -43,6 +43,7 @@ def test_real_official_conversion_preserves_brep_and_interference(tmp_path):
 
 
 async def test_import_step_texture_physics_save(tmp_path):
+    previous = os.environ.get("WORKCELL_WORKER_PYTHON")
     os.environ["WORKCELL_WORKER_PYTHON"] = sys.executable
     stage = Usd.Stage.CreateInMemory()
     UsdGeom.SetStageUpAxis(stage, "Z")
@@ -68,6 +69,10 @@ async def test_import_step_texture_physics_save(tmp_path):
         assert report["coverage"]["complete"]
     finally:
         session.close()
+        if previous is None:
+            os.environ.pop("WORKCELL_WORKER_PYTHON")
+        else:
+            os.environ["WORKCELL_WORKER_PYTHON"] = previous
 
 
 def test_changed_brep_file_is_rejected(tmp_path):

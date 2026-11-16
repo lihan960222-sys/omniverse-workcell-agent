@@ -25,6 +25,22 @@ class MaterialSpec(StrictModel):
     uv_projection: Literal["box", "existing"] = "box"
 
 
+class AutoMaterialSpec(StrictModel):
+    prim_paths: list[str] = Field(min_length=1)
+    color: tuple[Unit, Unit, Unit] = (0.55, 0.57, 0.60)
+    metallic: Unit = 0.8
+    roughness: Unit = 0.3
+    opacity: Unit = 1
+
+
+class VideoSpec(StrictModel):
+    prim_path: str = Field(min_length=1)
+    duration_s: Annotated[Number, Field(ge=1, le=60)] = 10
+    fps: int = Field(default=30, ge=1, le=60)
+    width: int = Field(default=1920, ge=128, le=3840, multiple_of=2)
+    height: int = Field(default=1080, ge=128, le=2160, multiple_of=2)
+
+
 class PhysicsSpec(StrictModel):
     prim_path: str
     mass_kg: Positive
@@ -69,7 +85,7 @@ class JointSpec(StrictModel):
 Operation = Literal[
     "environment", "inspect_scene", "get_selection", "save_project", "convert_step",
     "usd_brep_status", "install_usd_brep", "convert_step_brep", "import_step",
-    "import_asset", "set_material", "set_physics", "create_joint", "validate_asset",
+    "import_asset", "set_material", "auto_material", "record_video", "set_physics", "create_joint", "validate_asset",
     "query_features", "check_interference", "start_motion", "pause_motion",
     "resume_motion", "stop_motion", "reset_motion", "motion_status", "check_motion", "validation_rules",
 ]

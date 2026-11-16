@@ -11,9 +11,9 @@ description: Use when Codex operates the workcell MCP tools for STEP/STP convers
 
 ## STEP 到静态检查
 
-1. `convert_step` 使用 `source` 绝对路径。完成后保留 `result.usd_path` 与 `result.geometry_manifest`。
+1. `usd_brep_status` 查询官方 SDK，未安装时执行 `install_usd_brep` 并等待完成。`restart_required=true` 时通过项目启动脚本重新启动应用。
 2. 查询 `motion_status`；存在运动时调用 `stop_motion`、`reset_motion`，每次修改前更新场景版本。
-3. 读取最新场景版本，调用 `import_asset`，`path` 使用转换结果，`prim_path` 明确指定装配位置，例如 `/World/Imported`。
+3. 读取最新场景版本，调用 `import_step`，`source` 使用 STEP 绝对路径，`prim_path` 明确指定装配位置，例如 `/World/Imported`。保留 `result.usd_path`、`result.geometry_manifest` 和 `result.asset_root`。
 4. `check_interference` 的 `manifest` 使用转换结果；`asset_root` 使用实际导入位置。直接打开转换生成的 USD 时使用 `/World`。长度容差单位为 m，体积容差为 m³。
 5. 等待任务完成，核对 `coverage.complete`、未映射对象清单、`scene_changed_during_check`，并再次获取当前版本，与报告的 `scene_revision` 比较。版本改变时重新检查。
 6. 返回相交、接触数量及 `reports.html`、`reports.json`；同时说明未检查的对象和采用的容差。
@@ -27,6 +27,8 @@ description: Use when Codex operates the workcell MCP tools for STEP/STP convers
 | 操作 | 输入依据 |
 | --- | --- |
 | `set_material` | 用户指定的外观或现有资产数据；纹理文件会复制到工程 |
+| `auto_material` | 对 `prim_paths` 设置颜色、金属度、表面粗糙度和透明度；仅影响外观 |
+| `record_video` | `prim_path` 为展示模型根路径；默认 10 秒、1920×1080、30 fps，结果包含 MP4 和解码数据 |
 | `set_physics` | `mass_kg` 必须来自已知质量；惯量使用 kg·m² |
 | `query_features` | `manifest`、`asset_root`、当前 `prim_path`；返回世界坐标平面和圆柱特征 |
 | `create_joint` | 已知机构关系、世界坐标 `anchor_m`、轴线、限位；配置 `articulation_root` |
@@ -34,6 +36,8 @@ description: Use when Codex operates the workcell MCP tools for STEP/STP convers
 | `save_project` | 保存编辑层、USD 工程入口、工程 JSON 和运动配置索引 |
 
 Joint 与 MotionPlan 的直线位置使用 m，旋转位置使用 rad；速度使用 m/s 或 rad/s，加速度使用 m/s² 或 rad/s²。Joint 的驱动输入使用 SI：直线 stiffness 为 N/m、damping 为 N·s/m、max_force 为 N；旋转分别为 N·m/rad、N·m·s/rad、N·m。质量、机构用途、驱动能力和工艺顺序无法仅从 STEP 确定，缺少这些数据时列出所需输入。运动时长不能直接作为完整生产节拍。
+
+视觉展示按 `import_step`、`auto_material`、`record_video`、`save_project` 执行。每次修改前读取最新场景版本。视频需要停止运动和活动 Viewport，运行期间等待完成。报告视频的实际路径、帧数、时长和尺寸；完成外观设置后，物理参数保持原值。
 
 ## 运动与检查
 

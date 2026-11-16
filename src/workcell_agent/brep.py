@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -85,8 +86,19 @@ def verify_installation():
     if not BRepTools.Write_s(BRepPrimAPI_MakeBox(10, 20, 30).Shape(), str(source)):
         raise OSError("安装验证 BRep 写入失败")
     path = convert_brep(source, destination)
+    stage = Usd.Stage.Open(str(destination))
+    prim = stage.GetPrimAtPath(path)
+    face_types = prim.GetAttribute("face:surfaceType").Get()
+    extent = prim.GetAttribute("brep:extent").Get()
+    if not face_types or len(face_types) != 6 or not extent or len(extent) != 2:
+        raise ValueError("USD BRep 安装验证需要完整的六面 box 数据")
+    size = extent[1] - extent[0]
+    if not all(math.isclose(value, expected, rel_tol=1e-6, abs_tol=1e-5)
+               for value, expected in zip(size, (10, 20, 30))):
+        raise ValueError(f"USD BRep 安装验证的毫米尺寸不正确：{size}")
     result = {"source_commit": commit, "converter_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
-              "brep_array_count": 1, "probe_usd": str(destination), "probe_prim": path}
+              "brep_array_count": 1, "probe_usd": str(destination), "probe_prim": path,
+              "probe_face_count": len(face_types), "probe_size_mm": list(size)}
     (root / "workcell-installation.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     return result
 

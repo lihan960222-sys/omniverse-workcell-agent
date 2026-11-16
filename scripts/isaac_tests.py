@@ -47,6 +47,7 @@ def main():
             "--enable", "omni.asset_validator.core", "--enable", "isaacsim.asset.validation",
             "--enable", "isaacsim.core.experimental.prims",
             "--enable", "isaacsim.core.simulation_manager",
+            "--enable", "omni.kit.capture.viewport", "--enable", "omni.videoencoding",
             "--/exts/isaacsim.core.simulation_manager/default_engine=physx",
             "--/exts/isaacsim.physics.newton/auto_switch_on_startup=false",
         ],
@@ -116,12 +117,15 @@ def main():
             async def test_check_reset_preserves_completed_report(self):
                 await tests.test_check_reset_preserves_completed_report(self.workspace)
 
+            async def test_record_video(self):
+                await tests.test_record_video(self.workspace)
+
         suite = omni.kit.test.AsyncTestSuite()
         names = ("test_real_joint_motion_and_stop", "test_official_validation_returns_rule_coverage",
                  "test_contacts_are_real_events", "test_contact_lifecycle_preserves_lost_events",
                  "test_start_during_running_preserves_motion",
                  "test_initialization_cancellation", "test_check_reset_preserves_completed_report",
-                 "test_extension_bridge_health")
+                 "test_record_video", "test_extension_bridge_health")
         for name in names:
             suite.addTest(RuntimeTests(name))
 

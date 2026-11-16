@@ -32,6 +32,10 @@ async def test_step_import_physics_and_live_interference(tmp_path):
         await dispatcher.execute(OperationRequest(operation="import_asset", scene_revision=session.revision,
                                                   parameters={"path": result["usd_path"]}))
         paths = [part["prim_path"].replace("/World/", "/World/Imported/", 1) for part in manifest["parts"]]
+        visual = await dispatcher.execute(OperationRequest(operation="auto_material", scene_revision=session.revision,
+                                                           parameters={"prim_paths": ["/World/Imported"]}))
+        assert visual["visual_parameters"]["metallic"] == 0.8
+        assert visual["scene_revision"] == session.revision
         await dispatcher.execute(OperationRequest(operation="set_physics", scene_revision=session.revision,
                                                   parameters={"prim_path": paths[0], "mass_kg": 1}))
         assert stage.GetPrimAtPath(paths[0] + "/Geometry").HasAPI(UsdPhysics.CollisionAPI)

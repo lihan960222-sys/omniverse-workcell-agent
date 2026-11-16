@@ -41,6 +41,12 @@
     "simready-foundation-tier-core",
     "simready-foundation-tier-isaac"
   ],
+  "usd_brep": {
+    "source_commit": "3fd5b9548d19aa8c12c29bc9637a96d42a06f8a5",
+    "converter": "occt_to_usd",
+    "schema": "omniSolid",
+    "installation": "scripts/install_usd_brep.sh"
+  },
   "evidence": {
     "kind": "official_documentation",
     "linux_runtime_tested": false,
@@ -48,7 +54,8 @@
     "simready_validation_tested": false,
     "articulation_motion_tested": false,
     "physx_contacts_tested": false,
-    "gui_tested": false
+    "gui_tested": false,
+    "video_capture_tested": false
   },
   "sources": {
     "download": "https://docs.isaacsim.omniverse.nvidia.com/6.1.0/installation/download.html",

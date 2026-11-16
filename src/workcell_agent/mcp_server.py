@@ -11,7 +11,8 @@ server = FastMCP("omniverse-workcell-agent", instructions=(
     "submit_operation 返回任务标识，必须用 get_job 查询实际结果。"
     "只有 succeeded 表示该任务成功；未执行的检查不能报告通过。"
     "start_motion/check_motion 的任务成功表示启动完成；必须继续查询 motion_status 中同一 run_id 的实际状态。"
-    "STEP 工作流：usd_brep_status、必要时 install_usd_brep，再 import_step，随后 set_material。"
+    "STEP 工作流：usd_brep_status、必要时 install_usd_brep，再 import_step，随后 auto_material 或 set_material。"
+    "auto_material 设置颜色、金属度、表面粗糙度和透明度，仅影响外观。record_video 生成模型环绕展示 MP4，随后 save_project 保存。"
     "安装任务可能需要构建官方转换器，必须查询完成状态。source 为 Linux 本地 STP 路径。"))
 
 
@@ -57,13 +58,13 @@ async def cancel_job(job_id: str) -> dict:
     return await call_bridge("POST", f"/jobs/{job_id}/cancel")
 
 
-@server.tool(description="获取七项功能的参数定义，配置操作前读取。")
+@server.tool(description="获取操作的参数定义，配置操作前读取。")
 def operation_schema(operation: str) -> dict:
-    from .models import MaterialSpec, PhysicsSpec, JointSpec, StepImportSpec
+    from .models import MaterialSpec, PhysicsSpec, JointSpec, StepImportSpec, AutoMaterialSpec, VideoSpec
     from .motion import MotionPlan
     models = {"set_material": MaterialSpec, "set_physics": PhysicsSpec,
               "create_joint": JointSpec, "start_motion": MotionPlan, "check_motion": MotionPlan,
-              "import_step": StepImportSpec}
+              "import_step": StepImportSpec, "auto_material": AutoMaterialSpec, "record_video": VideoSpec}
     if operation in models:
         return models[operation].model_json_schema()
     schemas = {
