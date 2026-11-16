@@ -31,6 +31,6 @@ fi
     printf '%s\n' '安装目录的源码版本不符合项目配置。' >&2; exit 1;
 }
 cd -- "$WORKCELL_BREP_ROOT"
-bash prebuild.sh -c release
-bash repo.sh build -c release -j 2
+bash prebuild.sh
+bash repo.sh build --release -j 2
 "$python" -m workcell_agent.brep verify-installation
