@@ -17,7 +17,7 @@ export TMPDIR="$repo/.work/temp"
 export PM_PACKAGES_ROOT="$repo/.work/packman"
 export UV_CACHE_DIR="$repo/.work/uv-cache"
 export PYTHONNOUSERSITE=1
-unset PYTHONPATH PYTHONHOME PXR_PLUGINPATH_NAME
+unset PYTHONPATH PYTHONHOME PXR_PLUGINPATH_NAME LD_LIBRARY_PATH LD_PRELOAD VIRTUAL_ENV
 exec 9>"$repo/.work/usd-brep-install.lock"
 flock -n 9 || { printf '%s\n' 'USD BRep 安装任务正在运行。' >&2; exit 1; }
 commit=3fd5b9548d19aa8c12c29bc9637a96d42a06f8a5
