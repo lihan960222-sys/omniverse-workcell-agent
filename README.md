@@ -14,7 +14,7 @@
 
 STEP 提供几何和装配关系。质量、关节用途和运动过程需要补充参数。完整 SimReady 合规状态需要对应 profile 的全部规则执行证据。
 
-**当前验证：** Windows 本机已经执行真实 OpenUSD/OCP 核心测试。Linux Isaac Sim、GPU 运动、接触与 GUI 尚未执行；[Linux 验收说明](docs/linux-validation.md)记录检查步骤。版本约定见 [compatibility.json](compatibility.json)。
+**当前验证：** Windows 本机与 GitHub Ubuntu 24.04 CI 均通过 84 项真实核心测试，覆盖 OpenUSD、OCP、HTTP、MCP 和运动参数。结果见 [验证记录](docs/verification.md)。Isaac Sim、GPU 运动、接触与 GUI 尚未执行；[Linux 验收说明](docs/linux-validation.md)记录检查步骤。版本约定见 [compatibility.json](compatibility.json)。
 
 **Linux 安装**
 

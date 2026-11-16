@@ -5,6 +5,7 @@
 ## 已执行
 
 - 完整核心测试：84 项通过，运行时间 17.60 秒；实际 XML 保存在本机 `.work/core-tests.xml`。
+- GitHub Ubuntu 24.04、Python 3.12 CI：84 项通过，0 项失败、错误或跳过，测试运行时间 5.686 秒。已验证代码 commit 为 `7993837cdea4f44ffe6adbc84f563889e06b7cc1`；[CI 运行记录](https://github.com/lihan960222-sys/omniverse-workcell-agent/actions/runs/43795264472)。报告下载至本机 `.work/ci/43795264472/core-tests.xml`，同一记录中的 `core-test-results` artifact 可获取原始 XML。
 - STEP 装配转换、实例、嵌套变换、单位与同源 BRep 几何映射。
 - 相离、相切、相交、包含、包围盒候选筛选、几何容差和修改后重新检查。
 - 材质、纹理相对引用、质量、关节局部坐标与驱动单位。
@@ -19,4 +20,4 @@
 
 Linux Isaac Sim 中的 7 项运行测试和 1 项 Extension HTTP 验收尚未执行。GUI 显示与操作、实际关节运动、PhysX 接触、CCD、官方规则执行和完整 SimReady profile 均不能由本机核心测试推定通过。
 
-GitHub Linux CI 的运行状态另由实际 workflow 记录确认。测试脚本、步骤和结果字段见 [linux-validation.md](linux-validation.md)。
+测试脚本、步骤和结果字段见 [linux-validation.md](linux-validation.md)。

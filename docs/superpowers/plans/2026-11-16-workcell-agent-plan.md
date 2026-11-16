@@ -24,7 +24,7 @@
 - [x] 编写并检验项目工作流 Skill 的必要操作说明。
 - [x] 独立审查当前场景、文件保存和运动生命周期。
 - [x] 编写 Linux 安装、启动、实际 Isaac 测试与 CI。
-- [ ] 在 GitHub Linux CI 执行核心测试并记录结果。
+- [x] 在 GitHub Linux CI 执行核心测试并记录结果：84 项通过。
 - [ ] 在 Linux Isaac Sim 执行实际运动、接触与规则验收。
 - [ ] 在真实 Isaac Sim GUI 执行人工操作验收。
 
