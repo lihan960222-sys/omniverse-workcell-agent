@@ -4,8 +4,10 @@
 
 ## 已执行
 
-- 完整核心测试：93 项通过；实际 XML 保存在本机 `.work/core-tests.xml`。
-- GitHub Ubuntu 24.04、Python 3.12 CI：87 项通过，0 项失败、错误或跳过。已验证代码 commit 为 `5672df51f12fb7743ab2d9877ba8c355ca8d3b5a`；[CI 运行记录](https://github.com/lihan960222-sys/omniverse-workcell-agent/actions/runs/43813301416)。该记录的 `core-test-results` artifact 提供原始 XML。新增视觉材质与录制接口的 Linux 核心测试等待当前提交执行。
+- 完整核心测试：93 项通过，运行时间 17.46 秒；实际 XML 保存在本机 `.work/core-tests.xml`。
+- GitHub Ubuntu 24.04、Python 3.12 CI：93 项核心测试通过，运行时间 7.062 秒；3 项官方 USD BRep 集成测试通过，运行时间 4.269 秒；全部为 0 项失败、错误或跳过。已验证代码 commit 为 `f2d19357294859e91ef16fcdc172eb35ac5da934`；[CI 运行记录](https://github.com/lihan960222-sys/omniverse-workcell-agent/actions/runs/43814236234)。`core-test-results`、`usd-brep-test-results` artifacts 提供原始报告，本机副本位于 `.work/ci/43814236234/`。
+- 官方 USD BRep 转换器实际构建与自检通过：源码 commit `3fd5b9548d19aa8c12c29bc9637a96d42a06f8a5`，转换器 SHA-256 `16aa0e8eab37917d7ca978cbd5c67d3346e39c72f29ff3512a451620b11599ab`。生成 BrepArray，确认 6 个面及 `10×20×30 mm` 的几何尺寸。
+- 官方转换集成覆盖：STEP 装配实例、BrepArray 引用与单位、导入、材质及 UV、物理碰撞对象、保存、静态干涉和损坏文件拒绝。
 - STEP 装配转换、实例、嵌套变换、单位与同源 BRep 几何映射。
 - 相离、相切、相交、包含、包围盒候选筛选、几何容差和修改后重新检查。
 - 材质、纹理相对引用、质量、关节局部坐标与驱动单位。
@@ -19,8 +21,6 @@
 - 五个 NVIDIA 官方 Skill 的 17 个文件与固定上游版本哈希一致；配套引用和脚本检查；项目工作流 Skill 参考场景审阅。
 
 ## 需要目标环境
-
-官方 USD BRep 的 Linux 编译与三项实际转换验收正在 CI 中执行。
 
 Linux Isaac Sim 中的 8 项运行测试和 1 项 Extension HTTP 验收尚未执行。GUI 显示与操作、实际 MP4 录制、关节运动、PhysX 接触、CCD、官方规则执行和完整 SimReady profile 均不能由本机核心测试推定通过。
 

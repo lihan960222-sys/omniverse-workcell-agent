@@ -51,6 +51,7 @@
     "kind": "official_documentation",
     "linux_runtime_tested": false,
     "cad_conversion_tested": false,
+    "usd_brep_conversion_tested": true,
     "simready_validation_tested": false,
     "articulation_motion_tested": false,
     "physx_contacts_tested": false,
