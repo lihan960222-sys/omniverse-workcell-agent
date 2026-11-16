@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-11-16",
+  "target": {
+    "platform": "linux-x86_64",
+    "isaac_sim": "6.1.0",
+    "python": "3.12",
+    "kit_sdk": "110.3.0",
+    "minimum_glibc": "2.35",
+    "physics_backend": "physx"
+  },
+  "required_settings": {
+    "/exts/isaacsim.core.simulation_manager/default_engine": "physx",
+    "/exts/isaacsim.physics.newton/auto_switch_on_startup": false
+  },
+  "official_skills": {
+    "repository": "https://github.com/isaac-sim/IsaacSim",
+    "tag": "v6.1.0",
+    "commit": "7c206f75bdadd9e05fc457f19863ca4c3f0cb693",
+    "license": "Apache-2.0",
+    "directory": "skills/vendor/nvidia",
+    "names": [
+      "physics-simulation",
+      "usd-articulation",
+      "usd-composition-architecture",
+      "usd-pipeline",
+      "spatial-reasoning"
+    ]
+  },
+  "bundled_extensions": {
+    "omni.kit.converter.cad": "209.5.2",
+    "omni.kit.converter.hoops_core": "512.0.0",
+    "omni.kit.converter.common": "511.0.0",
+    "omni.asset_validator.core": "1.20.1",
+    "isaacsim.asset.validation": "2.2.0",
+    "isaacsim.core.experimental.prims": "1.10.8",
+    "omni.physx": "110.3.2"
+  },
+  "simready_packages": [
+    "simready-validate",
+    "simready-foundation-tier-core",
+    "simready-foundation-tier-isaac"
+  ],
+  "evidence": {
+    "kind": "official_documentation",
+    "linux_runtime_tested": false,
+    "cad_conversion_tested": false,
+    "simready_validation_tested": false,
+    "articulation_motion_tested": false,
+    "physx_contacts_tested": false,
+    "gui_tested": false
+  },
+  "sources": {
+    "download": "https://docs.isaacsim.omniverse.nvidia.com/6.1.0/installation/download.html",
+    "python": "https://docs.isaacsim.omniverse.nvidia.com/6.1.0/installation/install_python.html",
+    "release": "https://docs.isaacsim.omniverse.nvidia.com/6.1.0/overview/release_notes.html",
+    "cad": "https://docs.omniverse.nvidia.com/kit/docs/omni.kit.converter.hoops_core/512.0.0/SKILL.html",
+    "cad_options": "https://docs.omniverse.nvidia.com/kit/docs/omni.kit.converter.hoops_core/512.0.0/Overview.html",
+    "simready": "https://docs.isaacsim.omniverse.nvidia.com/6.1.0/py/source/extensions/isaacsim.asset.validation/docs/index.html",
+    "validator": "https://docs.omniverse.nvidia.com/kit/docs/asset-validator/1.20.1/source/extensions/omni.asset_validator.core/docs/api.html",
+    "validator_rules": "https://docs.omniverse.nvidia.com/kit/docs/asset-validator/1.20.1/source/extensions/omni.asset_validator.core/docs/tutorial/index.html",
+    "physics_settings": "https://github.com/isaac-sim/IsaacSim/blob/7c206f75bdadd9e05fc457f19863ca4c3f0cb693/source/extensions/isaacsim.core.simulation_manager/config/extension.toml",
+    "newton_settings": "https://github.com/isaac-sim/IsaacSim/blob/7c206f75bdadd9e05fc457f19863ca4c3f0cb693/source/extensions/isaacsim.physics.newton/config/extension.toml",
+    "articulation": "https://docs.isaacsim.omniverse.nvidia.com/6.1.0/py/source/extensions/isaacsim.core.experimental.prims/config/python_api.html",
+    "articulation_source": "https://github.com/isaac-sim/IsaacSim/blob/7c206f75bdadd9e05fc457f19863ca4c3f0cb693/source/extensions/isaacsim.core.experimental.prims/python/impl/articulation.py",
+    "motion_example": "https://docs.isaacsim.omniverse.nvidia.com/6.1.0/robot_setup_tutorials/tutorial_pickplace_example.html",
+    "contacts": "https://docs.omniverse.nvidia.com/dev-guide/latest/programmer_ref/physics/rb_physics.html",
+    "contact_data": "https://docs.omniverse.nvidia.com/kit/docs/omni_physics/latest/extensions/runtime/source/omni.physx/docs/dev_guide/contact_reports.html"
+  }
+}

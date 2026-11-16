@@ -1,0 +1,21 @@
+[package]
+version = "0.1.0"
+title = "Workcell Agent"
+description = "Codex 工程操作、运动与干涉检查面板"
+category = "Simulation"
+readme = "docs/README.md"
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.ui" = {}
+"omni.usd" = {}
+"omni.timeline" = {}
+"omni.physx" = {}
+"omni.asset_validator.core" = {}
+"isaacsim.asset.validation" = {}
+"isaacsim.core.experimental.prims" = {}
+"isaacsim.core.simulation_manager" = {}
+"isaacsim.core.version" = {}
+
+[[python.module]]
+name = "workcell"
